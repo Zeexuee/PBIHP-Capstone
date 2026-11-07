@@ -29,18 +29,18 @@ class HargaHarianTest extends TestCase
             ->create(['tanggal' => '2026-03-02']);
     }
 
-    public function test_accepts_a_same_day_price_from_a_different_source(): void
+    public function test_accepts_a_same_day_price_from_a_different_market_type(): void
     {
-        $bapanas = HargaHarian::factory()->create(['tanggal' => '2026-03-02']);
+        $tradisional = HargaHarian::factory()->create(['tanggal' => '2026-03-02']);
 
-        $pihps = HargaHarian::factory()
-            ->dariPihps()
-            ->for($bapanas->provinsi)
-            ->for($bapanas->komoditas)
+        $modern = HargaHarian::factory()
+            ->pasarModern()
+            ->for($tradisional->provinsi)
+            ->for($tradisional->komoditas)
             ->create(['tanggal' => '2026-03-02']);
 
         $this->assertSame(2, HargaHarian::count());
-        $this->assertSame(SumberData::Pihps, $pihps->fresh()->sumber);
+        $this->assertSame(JenisPasar::Modern, $modern->fresh()->jenis_pasar);
     }
 
     public function test_upsert_on_the_unique_key_updates_the_price_instead_of_adding_a_row(): void
@@ -52,8 +52,8 @@ class HargaHarianTest extends TestCase
             'provinsi_id' => $harga->provinsi_id,
             'komoditas_id' => $harga->komoditas_id,
             'tingkat_harga' => TingkatHarga::Konsumen->value,
-            'jenis_pasar' => JenisPasar::Umum->value,
-            'sumber' => SumberData::Bapanas->value,
+            'jenis_pasar' => JenisPasar::Tradisional->value,
+            'sumber' => SumberData::Pihps->value,
             'harga' => 15500,
         ]], HargaHarian::KUNCI_UNIK, ['harga']);
 
@@ -71,7 +71,7 @@ class HargaHarianTest extends TestCase
             'provinsi_id' => $provinsi->id,
             'komoditas_id' => $komoditas->id,
             'tingkat_harga' => TingkatHarga::Konsumen,
-            'sumber' => SumberData::Bapanas,
+            'sumber' => SumberData::Pihps,
             'harga' => 15000,
         ]);
 

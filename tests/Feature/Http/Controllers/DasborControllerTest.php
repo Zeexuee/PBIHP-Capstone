@@ -38,7 +38,7 @@ class DasborControllerTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Beras Medium (per kg)')
-            ->assertSee('Minyak Goreng Curah (per liter)')
+            ->assertSee('Minyak Goreng Curah (per kg)')
             ->assertSee('Kalimantan Utara')
             ->assertSee('Kepulauan Bangka Belitung');
     }

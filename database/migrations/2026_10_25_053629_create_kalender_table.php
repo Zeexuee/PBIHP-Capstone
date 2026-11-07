@@ -7,8 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Dimensi waktu. Penanda hari besar dan musim panen disimpan di sini agar
-     * dipakai bersama oleh fitur model prediksi dan penanda pada grafik tren.
+     * Dimensi waktu. Penanda hari besar dan musim panen disimpan di sini untuk
+     * penanda pada grafik tren. Model prediksi memakainya sebagai fitur hanya
+     * pada putaran pemodelan pertama (CATATAN_DATA.md bagian 8).
      */
     public function up(): void
     {

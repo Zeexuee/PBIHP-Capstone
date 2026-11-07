@@ -42,7 +42,8 @@ class TrenController extends Controller
 
         $hargaProvinsi = HargaHarian::whereBelongsTo($komoditas)
             ->where('tingkat_harga', $tingkat)
-            ->where('sumber', SumberData::Bapanas)
+            ->where('jenis_pasar', $tingkat->jenisPasarUtama())
+            ->where('sumber', SumberData::Pihps)
             ->whereIn('provinsi_id', $provinsi->pluck('id'))
             ->whereBetween('tanggal', [$mulai->toDateString(), $selesai->toDateString()])
             ->get(['tanggal', 'provinsi_id', 'harga'])
@@ -115,6 +116,10 @@ class TrenController extends Controller
      * Kunci harian adalah tanggal itu sendiri, kunci mingguan adalah hari Senin,
      * dan kunci bulanan adalah tanggal 1.
      *
+     * Deret harian hanya memuat hari kerja. PIHPS tidak mencatat harga pada
+     * Sabtu dan Minggu, sehingga akhir pekan bukan data yang hilang dan tidak
+     * boleh tampil sebagai celah di grafik.
+     *
      * @return array<string, true>
      */
     private function daftarEmber(Carbon $mulai, Carbon $selesai, string $agregasi): array
@@ -122,6 +127,10 @@ class TrenController extends Controller
         $ember = [];
 
         foreach (CarbonPeriod::create($mulai, $selesai) as $hari) {
+            if ($agregasi === 'harian' && $hari->isWeekend()) {
+                continue;
+            }
+
             $ember[$this->kunciEmber(Carbon::instance($hari), $agregasi)] = true;
         }
 

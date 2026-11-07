@@ -3,11 +3,10 @@
 namespace App\Enums;
 
 /**
- * Sumber data harga. Panel Harga Pangan Bapanas adalah sumber utama,
- * sedangkan PIHPS Bank Indonesia dipakai sebagai pembanding validasi silang.
+ * Sumber data harga. PIHPS Bank Indonesia adalah satu-satunya sumber; kolom
+ * sumber tetap disimpan agar asal setiap baris harga selalu tercatat.
  */
 enum SumberData: string
 {
-    case Bapanas = 'bapanas';
     case Pihps = 'pihps';
 }

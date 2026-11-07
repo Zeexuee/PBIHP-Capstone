@@ -87,7 +87,41 @@ class TrenControllerTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.mulai', '2026-04-06')
             ->assertJsonPath('data.selesai', '2026-10-02')
-            ->assertJsonCount(180, 'data.tanggal');
+            ->assertJsonCount(130, 'data.tanggal');
+    }
+
+    public function test_daily_series_skips_weekends_because_pihps_records_working_days_only(): void
+    {
+        $this->siapkanData();
+
+        $response = $this->getJson(route('api.v1.tren', [
+            'komoditas' => 'beras-medium',
+            'provinsi' => ['35'],
+            'mulai' => '2026-10-02',
+            'selesai' => '2026-10-05',
+        ]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.tanggal', ['2026-10-02', '2026-10-05'])
+            ->assertJsonPath('data.seri.0.harga', [14700, null]);
+    }
+
+    public function test_producer_series_reads_producer_prices_recorded_without_a_market_type(): void
+    {
+        $komoditas = Komoditas::factory()->create(['kode' => 'beras-medium']);
+        $jawaTimur = Provinsi::factory()->create(['kode' => '35', 'nama' => 'Jawa Timur', 'pulau' => Pulau::Jawa]);
+        HargaHarian::factory()->produsen()->for($komoditas)->for($jawaTimur)->create(['tanggal' => '2026-10-01', 'harga' => 12500]);
+        HargaHarian::factory()->for($komoditas)->for($jawaTimur)->create(['tanggal' => '2026-10-01', 'harga' => 14600]);
+
+        $response = $this->getJson(route('api.v1.tren', [
+            'komoditas' => 'beras-medium',
+            'tingkat' => 'produsen',
+            'provinsi' => ['35'],
+            'mulai' => '2026-10-01',
+            'selesai' => '2026-10-01',
+        ]));
+
+        $response->assertOk()->assertJsonPath('data.seri.1.harga', [12500]);
     }
 
     public function test_returns_holiday_markers_and_the_harvest_season_for_rice(): void
@@ -166,6 +200,6 @@ class TrenControllerTest extends TestCase
             HargaHarian::factory()->for($komoditas)->for($jawaTimur)->create(['tanggal' => $tanggal, 'harga' => $harga]);
         }
 
-        HargaHarian::factory()->dariPihps()->for($komoditas)->for($jawaTimur)->create(['tanggal' => '2026-10-01', 'harga' => 99999]);
+        HargaHarian::factory()->pasarModern()->for($komoditas)->for($jawaTimur)->create(['tanggal' => '2026-10-01', 'harga' => 99999]);
     }
 }

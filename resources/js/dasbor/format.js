@@ -6,6 +6,7 @@
 const KOSONG = '–';
 
 const angkaBulat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+const angkaSatuDesimal = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 });
 const angkaDuaDesimal = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const tanggalPanjang = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const tanggalPendek = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -43,6 +44,20 @@ export function persenBertanda(nilai) {
     const tanda = nilai > 0 ? '+' : nilai < 0 ? '−' : '';
 
     return `${tanda}${angkaDuaDesimal.format(Math.abs(nilai))}%`;
+}
+
+/**
+ * Untuk label sumbu yang sempit: "+10%" alih-alih "+10,00%". Satu desimal
+ * hanya muncul bila garis bantu jatuh pada nilai pecahan.
+ */
+export function persenBertandaRingkas(nilai) {
+    if (kosong(nilai)) {
+        return KOSONG;
+    }
+
+    const tanda = nilai > 0 ? '+' : nilai < 0 ? '−' : '';
+
+    return `${tanda}${angkaSatuDesimal.format(Math.abs(nilai))}%`;
 }
 
 export function desimal(nilai) {

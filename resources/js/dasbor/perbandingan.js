@@ -5,6 +5,9 @@ import { gambar, WARNA } from './grafik.js';
 
 let grafik = null;
 
+/** Lebar jendela (px) di bawahnya grafik memakai label yang lebih ringkas. */
+const BATAS_PONSEL = 480;
+
 /**
  * Batang menunjukkan selisih persen terhadap rata-rata nasional, bukan harga
  * mutlak. Batang harga yang dimulai dari nol membuat selisih beberapa persen
@@ -23,8 +26,16 @@ function gambarGrafik(data) {
         grid: { borderColor: '#e2e8f0', strokeDashArray: 3, padding: { top: 20 } },
         xaxis: {
             categories: provinsi.map((satu) => satu.nama),
-            labels: { formatter: (nilai) => format.persenBertanda(Number(nilai)) },
+            labels: { formatter: (nilai) => format.persenBertandaRingkas(Number(nilai)) },
         },
+        yaxis: { labels: { maxWidth: 200 } },
+        responsive: [{
+            breakpoint: BATAS_PONSEL,
+            options: {
+                xaxis: { tickAmount: 2 },
+                yaxis: { labels: { maxWidth: 175, style: { fontSize: '11px' } } },
+            },
+        }],
         tooltip: {
             y: {
                 formatter: (nilai, { dataPointIndex }) => `${format.persenBertanda(nilai)} · ${format.hargaPerSatuan(provinsi[dataPointIndex].harga, satuan)}`,
@@ -94,7 +105,7 @@ export async function muatPerbandingan(konfigurasi, filter) {
     if (data.provinsi.length === 0) {
         grafik?.destroy();
         grafik = null;
-        status('perbandingan-status', 'Tidak ada data provinsi pada tanggal ini. Coba pilih tanggal lain.');
+        status('perbandingan-status', 'Tidak ada data provinsi pada tanggal ini. PIHPS hanya mencatat harga pada hari kerja, coba pilih tanggal lain.');
 
         return;
     }

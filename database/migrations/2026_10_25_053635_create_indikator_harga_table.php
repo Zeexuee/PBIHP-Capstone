@@ -9,7 +9,8 @@ return new class extends Migration
     /**
      * Indikator deskriptif yang dihitung pada tahap praproses dan disimpan,
      * agar dasbor tidak menghitung ulang selisih setiap kali halaman dibuka.
-     * Indikator hanya dihitung dari sumber utama, yaitu Panel Harga Pangan Bapanas.
+     * Indikator dihitung dari harga PIHPS pada jenis pasar utama setiap tingkat
+     * harga, yaitu pasar tradisional untuk konsumen dan pasar umum untuk produsen.
      */
     public function up(): void
     {

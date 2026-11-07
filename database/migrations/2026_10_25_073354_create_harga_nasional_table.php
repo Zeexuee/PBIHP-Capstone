@@ -7,11 +7,13 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Harga rata-rata nasional harian dari Panel Harga Pangan Bapanas.
+     * Harga rata-rata nasional harian dari PIHPS Bank Indonesia.
      *
      * Sesuai keputusan tim, acuan rata-rata nasional adalah angka nasional yang
-     * diterbitkan Bapanas, bukan rata-rata dari 21 provinsi cakupan penelitian.
-     * Karena sumbernya selalu Bapanas, tabel ini tidak memiliki kolom sumber.
+     * diterbitkan PIHPS, bukan rata-rata dari 21 provinsi cakupan penelitian.
+     * Angka ini mengacu pada jenis pasar utama setiap tingkat harga, yaitu pasar
+     * tradisional untuk konsumen dan pasar umum untuk produsen, sehingga tabel
+     * ini tidak memiliki kolom sumber maupun jenis pasar.
      * Unique key diurutkan komoditas, tingkat harga, lalu tanggal agar sekaligus
      * melayani kueri deret waktu dan foreign key komoditas tanpa index tambahan.
      */

@@ -3,7 +3,19 @@ import { buat, cari, kosongkan, sel, status, tulis } from './dom.js';
 import * as format from './format.js';
 import { gambar, WARNA } from './grafik.js';
 
-const SATUAN_PERIODE = { harian: 'hari', mingguan: 'minggu', bulanan: 'bulan' };
+const SATUAN_PERIODE = { harian: 'hari kerja', mingguan: 'minggu', bulanan: 'bulan' };
+
+const TEKS_PANEN = 'Musim panen';
+
+/** Tinggi satu baris label (px), banyak baris paling banyak, dan jarak label dari tepi atas area plot. */
+const TINGGI_BARIS_LABEL = 15;
+const MAKS_BARIS_LABEL = 3;
+const OFFSET_LABEL = 12;
+/** Perkiraan lebar huruf pada font 11px, jarak antar label, lebar sumbu y di kiri, dan ruang kosong di kanan area plot. */
+const LEBAR_HURUF = 6;
+const JARAK_LABEL = 8;
+const LEBAR_SUMBU_Y = 64;
+const JARAK_KANAN = 10;
 
 let grafik = null;
 let dataTerakhir = null;
@@ -55,45 +67,115 @@ function rentangTanggal(konfigurasi) {
     return { mulai: format.tambahHari(akhir, 1 - Number(pilihan)), selesai: akhir };
 }
 
+/**
+ * Label anotasi diletakkan di atas area plot, bukan di dalamnya, sehingga
+ * tidak pernah menimpa garis harga berapa pun datanya. Label yang berdekatan
+ * dipindah ke baris di atasnya. Label yang tidak muat di baris mana pun tidak
+ * digambar di grafik; namanya tetap tertulis pada keterangan di bawah grafik.
+ *
+ * Lebar label hanya diperkirakan dari jumlah huruf, karena posisi sebenarnya
+ * baru diketahui setelah grafik digambar.
+ *
+ * @returns {Map<string, {baris: number, diKanan: boolean}>} letak tiap label, kunci tanpa letak berarti tidak digambar
+ */
+function letakkanLabel(data) {
+    const letak = new Map();
+
+    if (data.tanggal.length < 2) {
+        return letak;
+    }
+
+    const awal = format.keWaktu(data.tanggal[0]);
+    const akhir = format.keWaktu(data.tanggal[data.tanggal.length - 1]);
+    const lebarGrafik = cari('tren-grafik').clientWidth;
+    const lebarPlot = lebarGrafik - LEBAR_SUMBU_Y - JARAK_KANAN;
+
+    const butir = [
+        ...data.musim_panen.map((satu, i) => ({ kunci: `panen-${i}`, teks: TEKS_PANEN, waktu: format.keWaktu(satu.mulai) })),
+        ...data.penanda.map((satu, i) => ({ kunci: `penanda-${i}`, teks: satu.nama, waktu: format.keWaktu(satu.tanggal) })),
+    ].sort((a, b) => a.waktu - b.waktu);
+
+    const ujungBaris = Array(MAKS_BARIS_LABEL).fill(-Infinity);
+
+    for (const satu of butir) {
+        const lebar = satu.teks.length * LEBAR_HURUF + JARAK_LABEL;
+        const x = LEBAR_SUMBU_Y + ((satu.waktu - awal) / Math.max(akhir - awal, 1)) * lebarPlot;
+        const diKanan = x + lebar > lebarGrafik;
+        const kiri = diKanan ? x - lebar : x;
+        const baris = ujungBaris.findIndex((ujung) => kiri >= ujung + JARAK_LABEL);
+
+        if (baris !== -1) {
+            ujungBaris[baris] = kiri + lebar;
+            letak.set(satu.kunci, { baris, diKanan });
+        }
+    }
+
+    return letak;
+}
+
+function labelDiAtasPlot(teks, warna, { baris, diKanan }) {
+    return {
+        text: teks,
+        position: 'top',
+        orientation: 'horizontal',
+        textAnchor: diKanan ? 'end' : 'start',
+        offsetX: diKanan ? -4 : 4,
+        offsetY: -(baris * TINGGI_BARIS_LABEL + OFFSET_LABEL),
+        borderColor: 'transparent',
+        style: { background: 'transparent', color: warna, fontSize: '11px' },
+    };
+}
+
 function anotasi(data) {
-    const penanda = data.penanda.map((satu) => ({
+    const letak = letakkanLabel(data);
+
+    const penanda = data.penanda.map((satu, i) => ({
         x: format.keWaktu(satu.tanggal),
         borderColor: WARNA.penanda,
         strokeDashArray: 3,
-        label: {
-            text: satu.nama,
-            orientation: 'vertical',
-            borderColor: 'transparent',
-            style: { background: 'transparent', color: '#475569', fontSize: '11px' },
-        },
+        ...(letak.has(`penanda-${i}`) && { label: labelDiAtasPlot(satu.nama, '#475569', letak.get(`penanda-${i}`)) }),
     }));
 
-    const panen = data.musim_panen.map((satu) => ({
+    const panen = data.musim_panen.map((satu, i) => ({
         x: format.keWaktu(satu.mulai),
         x2: format.keWaktu(satu.selesai),
         fillColor: WARNA.panen,
         opacity: 0.08,
         borderColor: 'transparent',
-        label: {
-            text: 'Musim panen',
-            position: 'top',
-            orientation: 'horizontal',
-            textAnchor: 'start',
-            offsetX: 6,
-            offsetY: 16,
-            borderColor: 'transparent',
-            style: { background: 'transparent', color: '#15803d', fontSize: '11px' },
-        },
+        ...(letak.has(`panen-${i}`) && { label: labelDiAtasPlot(TEKS_PANEN, '#15803d', letak.get(`panen-${i}`)) }),
     }));
 
-    return [...panen, ...penanda];
+    const barisTerpakai = letak.size === 0 ? 0 : Math.max(...[...letak.values()].map((satu) => satu.baris)) + 1;
+
+    return { xaxis: [...panen, ...penanda], ruangAtas: barisTerpakai === 0 ? 0 : barisTerpakai * TINGGI_BARIS_LABEL + OFFSET_LABEL };
+}
+
+/**
+ * Nama penanda dan arti area hijau ditulis juga sebagai teks, supaya tetap
+ * terbaca ketika label di grafik tidak muat atau grafik dibaca pembaca layar.
+ */
+function tampilkanKeterangan(data) {
+    const bagian = [];
+
+    if (data.penanda.length > 0) {
+        const daftar = data.penanda.map((satu) => `${satu.nama} (${format.tanggalSingkat(satu.tanggal)})`).join(', ');
+        bagian.push(`Garis vertikal putus-putus: ${daftar}.`);
+    }
+
+    if (data.musim_panen.length > 0) {
+        bagian.push('Area hijau: musim panen.');
+    }
+
+    tulis('tren-penanda', bagian.join(' '));
 }
 
 function gambarGrafik(data) {
     const satuan = data.komoditas.satuan;
+    const { xaxis: anotasiX, ruangAtas } = anotasi(data);
 
     grafik = gambar(cari('tren-grafik'), grafik, {
         chart: { type: 'line', height: 360 },
+        grid: { borderColor: '#e2e8f0', strokeDashArray: 3, padding: { top: ruangAtas } },
         series: data.seri.map((seri) => ({
             name: seri.nama,
             data: data.tanggal.map((tanggal, i) => [format.keWaktu(tanggal), seri.harga[i]]),
@@ -112,7 +194,7 @@ function gambarGrafik(data) {
             x: { formatter: (waktu) => format.periode(new Date(waktu).toISOString().slice(0, 10), data.agregasi) },
             y: { formatter: (nilai) => (nilai === null || nilai === undefined ? 'tanpa data' : format.hargaPerSatuan(nilai, satuan)) },
         },
-        annotations: { xaxis: anotasi(data) },
+        annotations: { xaxis: anotasiX },
     });
 }
 
@@ -184,6 +266,7 @@ export async function muatTren(konfigurasi, filter) {
 
     dataTerakhir = data;
     gambarGrafik(data);
+    tampilkanKeterangan(data);
     tampilkanCelah(data);
     isiTabel();
 

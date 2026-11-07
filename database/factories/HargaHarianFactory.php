@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class HargaHarianFactory extends Factory
 {
     /**
-     * Define the model's default state.
+     * Harga konsumen di pasar tradisional, yaitu data utama dari PIHPS.
      *
      * @return array<string, mixed>
      */
@@ -27,29 +27,30 @@ class HargaHarianFactory extends Factory
             'provinsi_id' => Provinsi::factory(),
             'komoditas_id' => Komoditas::factory(),
             'tingkat_harga' => TingkatHarga::Konsumen,
-            'jenis_pasar' => JenisPasar::Umum,
-            'sumber' => SumberData::Bapanas,
+            'jenis_pasar' => JenisPasar::Tradisional,
+            'sumber' => SumberData::Pihps,
             'harga' => fake()->randomFloat(2, 10000, 20000),
         ];
     }
 
     /**
-     * Harga yang tercatat di tingkat produsen.
+     * Harga yang tercatat di tingkat produsen, tanpa jenis pasar.
      */
     public function produsen(): static
     {
         return $this->state(fn (): array => [
             'tingkat_harga' => TingkatHarga::Produsen,
+            'jenis_pasar' => JenisPasar::Umum,
         ]);
     }
 
     /**
-     * Harga dari PIHPS Bank Indonesia sebagai sumber pembanding.
+     * Harga konsumen di pasar modern, yang bersifat pelengkap.
      */
-    public function dariPihps(): static
+    public function pasarModern(): static
     {
         return $this->state(fn (): array => [
-            'sumber' => SumberData::Pihps,
+            'jenis_pasar' => JenisPasar::Modern,
         ]);
     }
 }

@@ -1,6 +1,6 @@
 @props(['id', 'judul', 'keterangan' => null])
 
-<section id="{{ $id }}" aria-labelledby="{{ $id }}-judul" {{ $attributes->merge(['class' => 'scroll-mt-40 rounded-lg border border-slate-200 bg-white']) }}>
+<section id="{{ $id }}" aria-labelledby="{{ $id }}-judul" {{ $attributes->merge(['class' => 'scroll-mt-4 rounded-lg md:scroll-mt-40 border border-slate-200 bg-white']) }}>
     <header class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
         <div>
             <h2 id="{{ $id }}-judul" class="text-base font-semibold text-slate-900">{{ $judul }}</h2>

@@ -14,7 +14,7 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * Perbandingan harga seluruh provinsi pada satu tanggal, diurutkan dari yang
- * termurah, beserta selisihnya terhadap rata-rata nasional Bapanas.
+ * termurah, beserta selisihnya terhadap rata-rata nasional PIHPS.
  */
 class PerbandinganController extends Controller
 {

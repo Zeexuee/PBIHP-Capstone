@@ -109,6 +109,19 @@ class RingkasanControllerTest extends TestCase
             ->assertJsonValidationErrors(['tingkat' => 'Harga produsen hanya tersedia untuk beras.']);
     }
 
+    public function test_returns_422_in_indonesian_for_an_unknown_price_level_or_island(): void
+    {
+        Komoditas::factory()->create(['kode' => 'beras-medium']);
+
+        $response = $this->getJson(route('api.v1.ringkasan', ['komoditas' => 'beras-medium', 'tingkat' => 'grosir', 'pulau' => 'papua']));
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'tingkat' => 'Tingkat harga tidak valid.',
+                'pulau' => 'Pulau tidak valid.',
+            ]);
+    }
+
     /**
      * @return array{komoditas: Komoditas, jawa_tengah: Provinsi, dki_jakarta: Provinsi, sumatera_barat: Provinsi}
      */

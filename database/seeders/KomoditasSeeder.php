@@ -10,10 +10,9 @@ use Illuminate\Database\Seeder;
 /**
  * Varian komoditas yang diteliti beserta satuan bakunya.
  *
- * Seluruh varian minyak goreng memakai satuan liter. Sebagian sumber mencatat
- * minyak goreng curah per kilogram; baris seperti itu tidak dikonversi dan tidak
- * dimuat, karena belum ada faktor konversi resmi yang terverifikasi.
- * Rincian keputusannya ada di CATATAN_DATA.md.
+ * Seluruh varian memakai rupiah per kilogram, satuan yang diterbitkan PIHPS
+ * untuk beras maupun minyak goreng, sehingga tidak ada konversi satuan.
+ * Padanan varian PIHPS dan rincian keputusannya ada di CATATAN_DATA.md.
  */
 class KomoditasSeeder extends Seeder
 {
@@ -23,8 +22,8 @@ class KomoditasSeeder extends Seeder
     private const array KOMODITAS = [
         ['kode' => 'beras-medium', 'nama' => 'Beras Medium', 'kelompok' => KelompokKomoditas::Beras, 'satuan' => SatuanHarga::Kilogram],
         ['kode' => 'beras-premium', 'nama' => 'Beras Premium', 'kelompok' => KelompokKomoditas::Beras, 'satuan' => SatuanHarga::Kilogram],
-        ['kode' => 'minyak-goreng-kemasan', 'nama' => 'Minyak Goreng Kemasan', 'kelompok' => KelompokKomoditas::MinyakGoreng, 'satuan' => SatuanHarga::Liter],
-        ['kode' => 'minyak-goreng-curah', 'nama' => 'Minyak Goreng Curah', 'kelompok' => KelompokKomoditas::MinyakGoreng, 'satuan' => SatuanHarga::Liter],
+        ['kode' => 'minyak-goreng-kemasan', 'nama' => 'Minyak Goreng Kemasan', 'kelompok' => KelompokKomoditas::MinyakGoreng, 'satuan' => SatuanHarga::Kilogram],
+        ['kode' => 'minyak-goreng-curah', 'nama' => 'Minyak Goreng Curah', 'kelompok' => KelompokKomoditas::MinyakGoreng, 'satuan' => SatuanHarga::Kilogram],
     ];
 
     /**

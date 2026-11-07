@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Seeders;
 
+use App\Enums\JenisPasar;
 use App\Enums\KelompokKomoditas;
 use App\Enums\ModelPrediksi;
+use App\Enums\StatusMuat;
+use App\Enums\SumberData;
 use App\Enums\TingkatHarga;
 use App\Models\HargaHarian;
 use App\Models\HargaNasional;
@@ -12,6 +15,8 @@ use App\Models\Komoditas;
 use App\Models\MetrikModel;
 use App\Models\Prediksi;
 use App\Models\Provinsi;
+use App\Models\RiwayatMuat;
+use Carbon\CarbonInterface;
 use Database\Seeders\DataTiruanSeeder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -29,8 +34,39 @@ class DataTiruanSeederTest extends TestCase
         $this->assertSame(4, HargaHarian::distinct()->count('komoditas_id'));
         $this->assertSame(4, HargaNasional::distinct()->count('komoditas_id'));
         $this->assertSame(4, IndikatorHarga::distinct()->count('komoditas_id'));
-        $this->assertSame(21 * 4 * 3 * 7, Prediksi::count());
+        $this->assertSame(21 * 4 * 3 * 5, Prediksi::count());
         $this->assertSame(4 * 3, MetrikModel::count());
+    }
+
+    public function test_records_prices_and_predictions_on_working_days_only_like_pihps(): void
+    {
+        $this->jalankanSeederTiruan();
+
+        $tanggal = HargaHarian::distinct()->pluck('tanggal')
+            ->merge(HargaNasional::distinct()->pluck('tanggal'))
+            ->merge(Prediksi::distinct()->pluck('tanggal_sasaran'));
+        $akhirPekan = $tanggal->filter(fn (CarbonInterface $hari): bool => $hari->isWeekend());
+
+        $this->assertNotEmpty($tanggal);
+        $this->assertSame([], $akhirPekan->map->toDateString()->values()->all());
+    }
+
+    public function test_tags_consumer_prices_as_traditional_market_and_producer_prices_as_general_market_from_pihps(): void
+    {
+        $this->jalankanSeederTiruan();
+
+        $kombinasi = HargaHarian::query()
+            ->select(['tingkat_harga', 'jenis_pasar', 'sumber'])
+            ->distinct()
+            ->orderBy('tingkat_harga')
+            ->get()
+            ->map(fn (HargaHarian $baris): array => [$baris->tingkat_harga, $baris->jenis_pasar, $baris->sumber])
+            ->all();
+
+        $this->assertSame([
+            [TingkatHarga::Konsumen, JenisPasar::Tradisional, SumberData::Pihps],
+            [TingkatHarga::Produsen, JenisPasar::Umum, SumberData::Pihps],
+        ], $kombinasi);
     }
 
     /**
@@ -78,7 +114,7 @@ class DataTiruanSeederTest extends TestCase
         $this->assertSame([KelompokKomoditas::Beras], $kelompokDenganHargaProdusen);
     }
 
-    public function test_indicator_compares_the_province_price_with_the_bapanas_national_price(): void
+    public function test_indicator_compares_the_province_price_with_the_national_price(): void
     {
         $this->jalankanSeederTiruan();
         $indikator = IndikatorHarga::orderBy('id')->firstOrFail();
@@ -116,8 +152,10 @@ class DataTiruanSeederTest extends TestCase
             ->orderBy('tanggal_sasaran')
             ->get();
 
-        $this->assertCount(7, $prediksiNaive);
-        $this->assertSame('2026-10-01', $prediksiNaive->first()->tanggal_sasaran->toDateString());
+        $this->assertSame(
+            ['2026-10-01', '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-07'],
+            $prediksiNaive->map->tanggal_sasaran->map->toDateString()->all(),
+        );
         $this->assertSame([$hargaTerakhir], $prediksiNaive->pluck('harga_prediksi')->unique()->values()->all());
     }
 
@@ -134,6 +172,28 @@ class DataTiruanSeederTest extends TestCase
             $this->assertLessThan(3.0, (float) $terpilih->mape, $komoditas->kode);
             $this->assertGreaterThanOrEqual(0.70, (float) $terpilih->r2, $komoditas->kode);
         }
+    }
+
+    public function test_marks_the_database_as_holding_dummy_data(): void
+    {
+        $this->jalankanSeederTiruan();
+
+        $penanda = RiwayatMuat::where('sumber', RiwayatMuat::SUMBER_TIRUAN)->sole();
+
+        $this->assertSame(StatusMuat::Berhasil, $penanda->status);
+        $this->assertSame(HargaHarian::count(), $penanda->baris_dimuat);
+        $this->assertSame('2026-08-01', $penanda->tanggal_data_awal->toDateString());
+        $this->assertNotNull($penanda->selesai_pada);
+    }
+
+    public function test_does_not_run_when_a_load_was_already_recorded(): void
+    {
+        RiwayatMuat::factory()->create();
+
+        $this->jalankanSeederTiruan();
+
+        $this->assertSame(0, HargaHarian::count());
+        $this->assertSame(1, RiwayatMuat::count());
     }
 
     public function test_does_not_add_rows_when_a_fact_table_already_holds_data(): void

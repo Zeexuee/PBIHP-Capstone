@@ -63,6 +63,9 @@ abstract class DasborRequest extends FormRequest
     }
 
     /**
+     * Aturan berbentuk objek seperti Rule::enum dicari dengan kunci
+     * "parameter.enum", bukan "enum", sehingga kuncinya memakai pola *.enum.
+     *
      * @return array<string, string>
      */
     public function messages(): array
@@ -71,7 +74,7 @@ abstract class DasborRequest extends FormRequest
             'required' => ':Attribute wajib diisi.',
             'string' => ':Attribute harus berupa teks.',
             'exists' => ':Attribute tidak dikenal.',
-            'enum' => ':Attribute tidak valid.',
+            '*.enum' => ':Attribute tidak valid.',
             'date_format' => ':Attribute harus berformat TTTT-BB-HH.',
             'after_or_equal' => ':Attribute tidak boleh lebih awal dari tanggal mulai.',
             'in' => ':Attribute tidak valid.',

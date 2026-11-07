@@ -31,7 +31,7 @@ class KomoditasFactory extends Factory
     }
 
     /**
-     * Varian minyak goreng, yang satuan bakunya liter.
+     * Varian minyak goreng, yang seperti beras dicatat PIHPS per kilogram.
      */
     public function minyakGoreng(): static
     {
@@ -42,7 +42,7 @@ class KomoditasFactory extends Factory
                 'kode' => Str::slug($nama),
                 'nama' => $nama,
                 'kelompok' => KelompokKomoditas::MinyakGoreng,
-                'satuan' => SatuanHarga::Liter,
+                'satuan' => SatuanHarga::Kilogram,
             ];
         });
     }

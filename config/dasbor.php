@@ -36,6 +36,11 @@ return [
         'rentang_maks_hari' => 1100,
     ],
 
+    /*
+    | Rentang harga tercatat yang ditampilkan sebelum prakiraan, dalam hari
+    | kalender. Hanya hari kerja di dalam rentang ini yang dikirim ke dasbor.
+    */
+
     'prediksi' => [
         'hari_historis' => 60,
     ],

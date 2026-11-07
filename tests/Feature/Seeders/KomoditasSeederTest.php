@@ -14,7 +14,7 @@ class KomoditasSeederTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_prices_rice_per_kilogram_and_cooking_oil_per_liter(): void
+    public function test_prices_rice_and_cooking_oil_per_kilogram_as_published_by_pihps(): void
     {
         $this->seed(KomoditasSeeder::class);
 
@@ -26,8 +26,8 @@ class KomoditasSeederTest extends TestCase
         $this->assertSame([
             'beras-medium' => SatuanHarga::Kilogram,
             'beras-premium' => SatuanHarga::Kilogram,
-            'minyak-goreng-curah' => SatuanHarga::Liter,
-            'minyak-goreng-kemasan' => SatuanHarga::Liter,
+            'minyak-goreng-curah' => SatuanHarga::Kilogram,
+            'minyak-goreng-kemasan' => SatuanHarga::Kilogram,
         ], $satuanPerKode);
     }
 
@@ -41,7 +41,7 @@ class KomoditasSeederTest extends TestCase
             ->all();
 
         $this->assertSame([SatuanHarga::Kilogram], $satuanPerKelompok[KelompokKomoditas::Beras->value]);
-        $this->assertSame([SatuanHarga::Liter], $satuanPerKelompok[KelompokKomoditas::MinyakGoreng->value]);
+        $this->assertSame([SatuanHarga::Kilogram], $satuanPerKelompok[KelompokKomoditas::MinyakGoreng->value]);
     }
 
     public function test_running_the_seeder_twice_does_not_duplicate_commodities(): void

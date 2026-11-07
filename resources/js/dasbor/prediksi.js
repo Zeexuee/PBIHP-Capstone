@@ -6,6 +6,50 @@ import { gambar, WARNA } from './grafik.js';
 let grafik = null;
 
 /**
+ * Rentang sumbu harga paling sempit, relatif terhadap harga di tengah grafik.
+ * Tanpa batas ini, harga yang datar membuat sumbu hanya selebar beberapa
+ * rupiah, sehingga garis datar terlihat seperti naik turun.
+ */
+const RENTANG_MINIMUM_RELATIF = 0.02;
+
+const LANGKAH_RUPIAH = [50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000];
+
+const JUMLAH_GARIS_BANTU_MAKS = 6;
+
+/**
+ * Batas sumbu harga yang dibulatkan ke kelipatan rupiah yang rapi, dengan
+ * rentang minimal RENTANG_MINIMUM_RELATIF dari harga tengah.
+ */
+function sumbuHarga(seri) {
+    const nilai = seri.flatMap((satu) => satu.data.map(([, harga]) => harga)).filter((harga) => harga !== null && harga !== undefined);
+
+    if (nilai.length === 0) {
+        return {};
+    }
+
+    let bawah = Math.min(...nilai);
+    let atas = Math.max(...nilai);
+    const minimum = ((bawah + atas) / 2) * RENTANG_MINIMUM_RELATIF;
+
+    if (atas - bawah < minimum) {
+        const tengah = (bawah + atas) / 2;
+        bawah = tengah - minimum / 2;
+        atas = tengah + minimum / 2;
+    }
+
+    // Sedikit ruang agar garis tidak menempel pada tepi atas atau bawah grafik.
+    const ruang = (atas - bawah) * 0.1;
+    bawah -= ruang;
+    atas += ruang;
+
+    const langkah = LANGKAH_RUPIAH.find((satu) => Math.ceil(atas / satu) - Math.floor(bawah / satu) <= JUMLAH_GARIS_BANTU_MAKS) ?? LANGKAH_RUPIAH.at(-1);
+    const min = Math.floor(bawah / langkah) * langkah;
+    const max = Math.ceil(atas / langkah) * langkah;
+
+    return { min, max, tickAmount: Math.max(1, Math.round((max - min) / langkah)) };
+}
+
+/**
  * Titik historis terakhir disambungkan ke awal garis prakiraan agar terlihat
  * kelanjutannya, tanpa mengubah angka prakiraan itu sendiri.
  */
@@ -41,7 +85,7 @@ function gambarGrafik(data) {
         colors: warna,
         stroke: { curve: 'straight', width: seri.map(() => 2.5), dashArray: garis },
         xaxis: { type: 'datetime', labels: { datetimeUTC: true } },
-        yaxis: { labels: { formatter: (nilai) => format.rupiah(nilai) } },
+        yaxis: { ...sumbuHarga(seri), labels: { formatter: (nilai) => format.rupiah(nilai) } },
         tooltip: {
             shared: true,
             x: { formatter: (waktu) => format.tanggal(new Date(waktu).toISOString().slice(0, 10)) },
@@ -100,17 +144,23 @@ function isiMetrik(data) {
             ? 'bg-slate-100 text-slate-700'
             : metrik.lolos ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800';
 
+        const status = keteranganStatus(metrik, data.kriteria);
+        const kelasLencana = `rounded px-2 py-0.5 text-xs font-medium ${lencana}`;
+
+        // Di layar sempit kolom Status tidak muat, jadi statusnya ditulis di bawah nama model dan kolomnya disembunyikan.
+        // Hanya satu dari keduanya yang tampil pada satu ukuran layar.
         return buat('tr', {}, [
-            buat('th', { kelas: 'px-3 py-2 font-medium text-slate-900', atribut: { scope: 'row' } }, [
+            buat('th', { kelas: 'px-2 py-2 font-medium text-slate-900 sm:px-3', atribut: { scope: 'row' } }, [
                 metrik.label,
                 ...(metrik.terpilih ? [buat('span', { kelas: 'block text-xs font-normal text-slate-500', teks: 'model terpilih' })] : []),
+                buat('span', { kelas: `mt-1 inline-block sm:hidden ${kelasLencana}`, teks: status }),
             ]),
-            sel(format.persen(metrik.mape), 'px-3 py-2 text-right tabular-nums'),
-            sel(format.rupiah(metrik.rmse), 'px-3 py-2 text-right tabular-nums'),
-            sel(format.rupiah(metrik.mae), 'px-3 py-2 text-right tabular-nums'),
-            sel(format.desimal(metrik.r2), 'px-3 py-2 text-right tabular-nums'),
-            buat('td', { kelas: 'px-3 py-2' }, [
-                buat('span', { kelas: `inline-block rounded px-2 py-0.5 text-xs font-medium ${lencana}`, teks: keteranganStatus(metrik, data.kriteria) }),
+            sel(format.persen(metrik.mape), 'px-2 py-2 text-right tabular-nums sm:px-3'),
+            sel(format.rupiah(metrik.rmse), 'px-2 py-2 text-right tabular-nums sm:px-3'),
+            sel(format.rupiah(metrik.mae), 'px-2 py-2 text-right tabular-nums sm:px-3'),
+            sel(format.desimal(metrik.r2), 'px-2 py-2 text-right tabular-nums sm:px-3'),
+            buat('td', { kelas: 'hidden px-3 py-2 sm:table-cell' }, [
+                buat('span', { kelas: `inline-block ${kelasLencana}`, teks: status }),
             ]),
         ]);
     });
@@ -128,7 +178,7 @@ function isiRingkas(data) {
     }
 
     if (metrikTampil) {
-        kalimat.push(`Pada periode uji ${format.tanggal(metrikTampil.periode_uji_mulai)} sampai ${format.tanggal(metrikTampil.periode_uji_selesai)}, prakiraan ini rata-rata meleset sekitar ${format.persen(metrikTampil.mape)} dari harga sebenarnya.`);
+        kalimat.push(`Pada periode uji ${format.tanggal(metrikTampil.periode_uji_mulai)} sampai ${format.tanggal(metrikTampil.periode_uji_selesai)}, prakiraan ini rata-rata meleset sekitar ${format.persen(metrikTampil.mape)} dari harga sebenarnya. Angka ini dihitung dari seluruh provinsi sekaligus, bukan khusus ${data.provinsi.nama}.`);
     }
 
     if (terakhir) {

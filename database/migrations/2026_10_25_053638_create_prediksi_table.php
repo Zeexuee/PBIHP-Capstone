@@ -9,8 +9,10 @@ return new class extends Migration
     /**
      * Hasil prediksi yang ditulis oleh layanan Python. Dasbor membaca dari tabel
      * ini, sehingga prediksi terakhir tetap tampil walaupun layanan Python mati.
-     * Satu baris per wilayah, komoditas, model, dan tanggal sasaran; menjalankan
-     * ulang prediksi menimpa baris lama melalui upsert.
+     * Satu baris per wilayah, komoditas, model, dan tanggal sasaran. Menjalankan
+     * ulang pemodelan menghapus seluruh baris satu komoditas lalu menyisipkan
+     * baris baru dalam satu transaksi, sehingga tanggal sasaran lama tidak
+     * tertinggal.
      */
     public function up(): void
     {

@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Enums\JenisPasar;
 use App\Enums\KelompokKomoditas;
 use App\Enums\ModelPrediksi;
+use App\Enums\StatusMuat;
 use App\Enums\SumberData;
 use App\Enums\TingkatHarga;
 use App\Models\HargaHarian;
@@ -14,6 +14,7 @@ use App\Models\Komoditas;
 use App\Models\MetrikModel;
 use App\Models\Prediksi;
 use App\Models\Provinsi;
+use App\Models\RiwayatMuat;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -30,7 +31,10 @@ use Random\Randomizer;
  * Harga dibangkitkan secara deterministik dari harga dasar per komoditas, faktor
  * per provinsi, tren tahunan, kenaikan menjelang Idul Fitri, penurunan harga beras
  * pada musim panen, kenaikan bertahap minyak goreng setelah 1 Juli 2026, dan galat
- * acak yang berkorelasi antarhari. Harga produsen hanya dibuat untuk beras.
+ * acak yang berkorelasi antarhari.
+ *
+ * Bentuknya meniru data PIHPS: hanya hari kerja, seluruh harga per kilogram,
+ * harga konsumen dari pasar tradisional, dan harga produsen hanya untuk beras.
  *
  * Celah data yang sengaja dibuat:
  * - Kalimantan Utara (kode 65) tanpa data 10 sampai 21 Agustus 2026.
@@ -38,7 +42,7 @@ use Random\Randomizer;
  * - Sekitar satu persen hari pada setiap deret hilang secara acak.
  *
  * Harga nasional tetap tersedia pada hari-hari celah tersebut, sama seperti
- * angka nasional Bapanas yang tidak bergantung pada satu provinsi.
+ * angka nasional PIHPS yang tidak bergantung pada satu provinsi.
  */
 class DataTiruanSeeder extends Seeder
 {
@@ -53,13 +57,16 @@ class DataTiruanSeeder extends Seeder
     private const string TANGGAL_B50 = '2026-07-01';
 
     /**
+     * Harga dasar per kilogram, setara rata-rata PIHPS pasar tradisional pada
+     * Januari 2024 dibagi rata-rata faktor provinsi.
+     *
      * @var array<string, float>
      */
     private const array HARGA_DASAR = [
-        'beras-medium' => 13500,
-        'beras-premium' => 15200,
+        'beras-medium' => 14800,
+        'beras-premium' => 16100,
         'minyak-goreng-kemasan' => 19300,
-        'minyak-goreng-curah' => 17200,
+        'minyak-goreng-curah' => 15000,
     ];
 
     /**
@@ -127,6 +134,8 @@ class DataTiruanSeeder extends Seeder
         $tanggal = $this->daftarTanggal();
         $dibuatPada = now();
 
+        $penanda = $this->tandaiDataTiruan($dibuatPada);
+
         [$deret, $nasional] = $this->bangkitkanDeret($provinsi, $komoditas, $tanggal);
 
         $this->simpanHargaHarian($deret, $tanggal, $dibuatPada);
@@ -134,11 +143,34 @@ class DataTiruanSeeder extends Seeder
         $this->simpanIndikator($deret, $nasional, $tanggal, $dibuatPada);
         $this->simpanPrediksi($deret, $dibuatPada);
         $this->simpanMetrik($komoditas, $dibuatPada);
+
+        $penanda->update([
+            'status' => StatusMuat::Berhasil,
+            'baris_dimuat' => HargaHarian::count(),
+            'selesai_pada' => now(),
+        ]);
+    }
+
+    /**
+     * Penanda ditulis sebelum data apa pun dimuat, sehingga seeder yang gagal di
+     * tengah jalan tetap meninggalkan penanda dan ETL tetap menolak memuat data asli.
+     */
+    private function tandaiDataTiruan(Carbon $dibuatPada): RiwayatMuat
+    {
+        return RiwayatMuat::create([
+            'sumber' => RiwayatMuat::SUMBER_TIRUAN,
+            'status' => StatusMuat::Berjalan,
+            'tanggal_data_awal' => $this->tanggalAwal,
+            'tanggal_data_akhir' => $this->tanggalAkhir,
+            'rincian' => ['keterangan' => 'Data buatan DataTiruanSeeder, bukan data harga sebenarnya.'],
+            'mulai_pada' => $dibuatPada,
+        ]);
     }
 
     private function tabelFaktaSudahBerisi(): bool
     {
-        return HargaHarian::query()->exists()
+        return RiwayatMuat::query()->exists()
+            || HargaHarian::query()->exists()
             || HargaNasional::query()->exists()
             || IndikatorHarga::query()->exists()
             || Prediksi::query()->exists()
@@ -146,6 +178,9 @@ class DataTiruanSeeder extends Seeder
     }
 
     /**
+     * Hari kerja dalam rentang data, karena PIHPS tidak mencatat harga pada
+     * Sabtu dan Minggu.
+     *
      * @return list<string>
      */
     private function daftarTanggal(): array
@@ -153,7 +188,9 @@ class DataTiruanSeeder extends Seeder
         $tanggal = [];
 
         foreach (CarbonPeriod::create($this->tanggalAwal, $this->tanggalAkhir) as $hari) {
-            $tanggal[] = $hari->toDateString();
+            if (! $hari->isWeekend()) {
+                $tanggal[] = $hari->toDateString();
+            }
         }
 
         return $tanggal;
@@ -331,8 +368,8 @@ class DataTiruanSeeder extends Seeder
                     'provinsi_id' => $satuDeret['provinsi']->id,
                     'komoditas_id' => $satuDeret['komoditas']->id,
                     'tingkat_harga' => $satuDeret['tingkat']->value,
-                    'jenis_pasar' => JenisPasar::Umum->value,
-                    'sumber' => SumberData::Bapanas->value,
+                    'jenis_pasar' => $satuDeret['tingkat']->jenisPasarUtama()->value,
+                    'sumber' => SumberData::Pihps->value,
                     'harga' => $harga,
                     'created_at' => $dibuatPada,
                     'updated_at' => $dibuatPada,
@@ -413,8 +450,9 @@ class DataTiruanSeeder extends Seeder
     }
 
     /**
-     * Prediksi harga konsumen mulai sehari setelah data terakhir. Garis dasar
-     * Naive mengulang harga terakhir yang teramati.
+     * Prediksi harga konsumen untuk setiap hari kerja dalam rentang hariPrediksi
+     * hari setelah data terakhir. Garis dasar Naive mengulang harga terakhir
+     * yang teramati.
      *
      * @param  list<array{provinsi: Provinsi, komoditas: Komoditas, tingkat: TingkatHarga, harga: array<int, ?float>}>  $deret
      */
@@ -432,6 +470,12 @@ class DataTiruanSeeder extends Seeder
             $naik = $satuDeret['komoditas']->kelompok === KelompokKomoditas::MinyakGoreng ? 0.0006 : 0.0003;
 
             for ($h = 1; $h <= $this->hariPrediksi; $h++) {
+                $tanggalSasaran = $hariTerakhir->copy()->addDays($h);
+
+                if ($tanggalSasaran->isWeekend()) {
+                    continue;
+                }
+
                 $perkiraan = [
                     ModelPrediksi::Naive->value => $hargaTerakhir,
                     ModelPrediksi::RandomForest->value => round($hargaTerakhir * (1 + $naik * $h)),
@@ -443,7 +487,7 @@ class DataTiruanSeeder extends Seeder
                         'provinsi_id' => $satuDeret['provinsi']->id,
                         'komoditas_id' => $satuDeret['komoditas']->id,
                         'model' => $model,
-                        'tanggal_sasaran' => $hariTerakhir->copy()->addDays($h)->toDateString(),
+                        'tanggal_sasaran' => $tanggalSasaran->toDateString(),
                         'harga_prediksi' => $harga,
                         'dihasilkan_pada' => $dibuatPada,
                         'created_at' => $dibuatPada,

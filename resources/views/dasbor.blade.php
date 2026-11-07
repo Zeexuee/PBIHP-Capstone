@@ -40,7 +40,7 @@
         </div>
     @endif
 
-    <div class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <div class="border-b border-slate-200 bg-white/95 backdrop-blur md:sticky md:top-0 md:z-30">
         <div class="mx-auto flex max-w-7xl flex-wrap items-end gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
             <div class="flex flex-col gap-1">
                 <label for="filter-komoditas" class="text-xs font-medium text-slate-600">Komoditas</label>
@@ -60,7 +60,7 @@
             <div class="flex flex-col gap-1">
                 <label for="filter-tingkat" class="text-xs font-medium text-slate-600">Tingkat harga</label>
                 <select id="filter-tingkat" class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
-                    <option value="konsumen" selected>Konsumen</option>
+                    <option value="konsumen" selected>Konsumen (pasar tradisional)</option>
                     <option value="produsen">Produsen (hanya beras)</option>
                 </select>
             </div>
@@ -88,7 +88,7 @@
     </div>
 
     <main id="isi-utama" class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
-        <x-panel id="ringkasan" judul="Ringkasan" keterangan="Keadaan harga pada tanggal data terakhir, dibandingkan dengan rata-rata nasional Badan Pangan Nasional.">
+        <x-panel id="ringkasan" judul="Ringkasan" keterangan="Keadaan harga pada tanggal data terakhir, dibandingkan dengan rata-rata nasional PIHPS Bank Indonesia.">
             <p id="ringkasan-status" role="status" aria-live="polite" class="mb-4 text-sm text-slate-600 empty:hidden"></p>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -102,7 +102,7 @@
             </div>
         </x-panel>
 
-        <x-panel id="tren" judul="Tren harga" keterangan="Garis putus-putus abu-abu adalah rata-rata nasional. Garis yang terputus menandakan hari tanpa data, bukan harga nol.">
+        <x-panel id="tren" judul="Tren harga" keterangan="Garis putus-putus abu-abu adalah rata-rata nasional. Garis yang terputus menandakan hari kerja tanpa data, bukan harga nol.">
             <x-slot:aksi>
                 <div class="flex flex-col gap-1">
                     <label for="tren-rentang" class="text-xs font-medium text-slate-600">Periode</label>
@@ -132,10 +132,10 @@
                     @foreach ($provinsiPerPulau as $namaPulau => $daftar)
                         <div data-kelompok-pulau="{{ $daftar->first()->pulau->value }}">
                             <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $namaPulau }}</p>
-                            <ul class="flex flex-col gap-1">
+                            <ul class="flex flex-col">
                                 @foreach ($daftar as $satuProvinsi)
                                     <li>
-                                        <label class="flex items-center gap-2 text-sm text-slate-700">
+                                        <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
                                             <input type="checkbox" name="tren-provinsi" value="{{ $satuProvinsi->kode }}"
                                                 data-pulau="{{ $satuProvinsi->pulau->value }}"
                                                 class="size-4 rounded border-slate-300 text-merek-600"
@@ -152,6 +152,7 @@
 
             <p id="tren-status" role="status" aria-live="polite" class="mb-2 text-sm text-slate-600 empty:hidden"></p>
             <div id="tren-grafik" class="min-h-80" role="img" aria-label="Grafik tren harga. Rincian angka tersedia pada tabel di bawah grafik."></div>
+            <p id="tren-penanda" class="mt-3 text-sm text-slate-600 empty:hidden"></p>
             <ul id="tren-celah" class="mt-3 flex flex-col gap-1 text-sm text-slate-600 empty:hidden"></ul>
 
             <details id="tren-rincian" class="mt-4 rounded-md border border-slate-200">
@@ -199,7 +200,7 @@
             </div>
         </x-panel>
 
-        <x-panel id="prediksi" judul="Prediksi harga" keterangan="Prediksi harga tingkat konsumen. Area berwarna adalah periode prakiraan.">
+        <x-panel id="prediksi" judul="Prediksi harga" keterangan="Prediksi harga konsumen di pasar tradisional. Area berwarna adalah periode prakiraan.">
             <x-slot:aksi>
                 <div class="flex flex-col gap-1">
                     <label for="prediksi-provinsi" class="text-xs font-medium text-slate-600">Provinsi</label>
@@ -230,53 +231,53 @@
                     <p class="text-sm text-slate-600">
                         Prakiraan bukan kepastian. Gunakan sebagai bahan pertimbangan, bukan sebagai satu-satunya dasar keputusan.
                     </p>
-
-                    <details class="rounded-md border border-slate-200">
-                        <summary class="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700">Metrik evaluasi model</summary>
-                        <div class="overflow-x-auto border-t border-slate-200">
-                            <table class="w-full text-left text-sm">
-                                <caption class="px-3 py-2 text-left text-xs text-slate-600">
-                                    Kriteria penerimaan: MAPE di bawah {{ number_format($kriteria['mape_maks'], 0, ',', '.') }}%, R² minimal {{ number_format($kriteria['r2_min'], 2, ',', '.') }}, dan galat lebih kecil daripada garis dasar Naive.
-                                </caption>
-                                <thead class="bg-slate-100 text-xs uppercase text-slate-600">
-                                    <tr>
-                                        <th scope="col" class="px-3 py-2">Model</th>
-                                        <th scope="col" class="px-3 py-2 text-right">MAPE</th>
-                                        <th scope="col" class="px-3 py-2 text-right">RMSE</th>
-                                        <th scope="col" class="px-3 py-2 text-right">MAE</th>
-                                        <th scope="col" class="px-3 py-2 text-right">R²</th>
-                                        <th scope="col" class="px-3 py-2">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="prediksi-metrik" class="divide-y divide-slate-100"></tbody>
-                            </table>
-                        </div>
-                    </details>
                 </div>
             </div>
+
+            <details class="mt-6 rounded-md border border-slate-200">
+                <summary class="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700">Metrik evaluasi model</summary>
+                <div class="overflow-x-auto border-t border-slate-200">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <caption class="px-3 py-2 text-left text-xs text-slate-600">
+                            Kriteria penerimaan: MAPE di bawah {{ number_format($kriteria['mape_maks'], 0, ',', '.') }}%, R² minimal {{ number_format($kriteria['r2_min'], 2, ',', '.') }}, dan galat lebih kecil daripada garis dasar Naive. Metrik dihitung pada periode uji dari seluruh provinsi sekaligus, untuk prakiraan 1 sampai 20 hari kerja ke depan.
+                        </caption>
+                        <thead class="bg-slate-100 text-xs uppercase text-slate-600">
+                            <tr>
+                                <th scope="col" class="px-2 py-2 sm:px-3">Model</th>
+                                <th scope="col" class="px-2 py-2 text-right sm:px-3">MAPE</th>
+                                <th scope="col" class="px-2 py-2 text-right sm:px-3">RMSE</th>
+                                <th scope="col" class="px-2 py-2 text-right sm:px-3">MAE</th>
+                                <th scope="col" class="px-2 py-2 text-right sm:px-3">R²</th>
+                                <th scope="col" class="hidden px-3 py-2 sm:table-cell">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prediksi-metrik" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </details>
         </x-panel>
 
         <x-panel id="tentang-data" judul="Tentang data">
             <dl class="grid grid-cols-1 gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
                 <div>
                     <dt class="font-semibold text-slate-900">Sumber</dt>
-                    <dd class="mt-1 text-slate-600">Panel Harga Pangan Badan Pangan Nasional sebagai sumber utama. PIHPS Bank Indonesia hanya dipakai sebagai pembanding validasi dan tidak ditampilkan di dasbor.</dd>
+                    <dd class="mt-1 text-slate-600">Pusat Informasi Harga Pangan Strategis Nasional (PIHPS) Bank Indonesia. Harga konsumen diambil dari pasar tradisional, sedangkan harga produsen hanya tersedia untuk beras.</dd>
                 </div>
                 <div>
                     <dt class="font-semibold text-slate-900">Periode</dt>
-                    <dd class="mt-1 text-slate-600">{{ $formatTanggal($tanggalAwal) }} sampai {{ $formatTanggal($tanggalAkhir) }}, diperbarui harian.</dd>
+                    <dd class="mt-1 text-slate-600">{{ $formatTanggal($tanggalAwal) }} sampai {{ $formatTanggal($tanggalAkhir) }}. PIHPS mencatat harga setiap hari kerja.</dd>
                 </div>
                 <div>
-                    <dt class="font-semibold text-slate-900">Satuan</dt>
-                    <dd class="mt-1 text-slate-600">Beras dalam rupiah per kilogram, minyak goreng dalam rupiah per liter. Harga dengan satuan berbeda tidak pernah dibandingkan langsung.</dd>
+                    <dt class="font-semibold text-slate-900">Satuan dan varian</dt>
+                    <dd class="mt-1 text-slate-600">Seluruh harga dalam rupiah per kilogram sebagaimana diterbitkan PIHPS, termasuk minyak goreng, tanpa konversi. Beras medium dan premium memakai kualitas Medium I dan Super I, minyak goreng kemasan memakai Kemasan Bermerk 1.</dd>
                 </div>
                 <div>
                     <dt class="font-semibold text-slate-900">Rata-rata nasional</dt>
-                    <dd class="mt-1 text-slate-600">Angka nasional yang diterbitkan Badan Pangan Nasional, bukan rata-rata dari 21 provinsi di dasbor ini.</dd>
+                    <dd class="mt-1 text-slate-600">Angka nasional yang diterbitkan PIHPS untuk jenis harga yang sama, bukan rata-rata dari 21 provinsi di dasbor ini.</dd>
                 </div>
                 <div>
                     <dt class="font-semibold text-slate-900">Data kosong</dt>
-                    <dd class="mt-1 text-slate-600">Hari tanpa data dibiarkan kosong dan tampil sebagai garis yang terputus. Data tidak diisi dengan perkiraan.</dd>
+                    <dd class="mt-1 text-slate-600">Sabtu dan Minggu tidak ditampilkan karena PIHPS tidak mencatat harga pada hari itu. Hari kerja tanpa data dibiarkan kosong dan tampil sebagai garis yang terputus, tidak diisi dengan perkiraan.</dd>
                 </div>
                 <div>
                     <dt class="font-semibold text-slate-900">Di luar lingkup</dt>
